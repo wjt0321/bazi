@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
 """
-《三命通会》智能命理 Agent - 完整演示脚本
-展示六大扩展功能：大运流年、神煞、命宫胎元身宫、合盘、择日、风水
+《三命通会》八字命理分析工具
+
+命令行入口，支持八字排盘、大运流年、神煞、命宫胎元身宫、
+风水参考、择日分析、合盘对比、《三命通会》原文检索等功能。
+
+用法:
+    python bazi.py --year 1990 --month 5 --day 15 --hour 14 --gender 男
+    python bazi.py --year 1990 --month 5 --day 15 --hour 14 --gender 男 --json
+    python bazi.py --year 1990 --month 5 --day 15 --hour 14 --gender 男 --zeri 2025 6 1 结婚
+    python bazi.py --year 1990 --month 5 --day 15 --hour 14 --gender 男 --hepan 1992 3 8 10 女
 """
 
 import json
 import os
+import sys
 import argparse
 from bazi_paipan import BaziPaipan
 from rag_retriever import RAGRetriever
@@ -61,7 +70,6 @@ def display_dayun(paipan, bazi_result, birth_info):
         age = qiyun['qiyun_age'] + (d['step'] - 1) * 10
         print(f"{d['step']:<4} {age}岁{'':<2} {d['ganzhi']:<6} {d['shishen']:<6}")
 
-    # 流年示例
     import datetime
     current_year = datetime.datetime.now().year
     liunian = paipan.compute_liunian(current_year)
@@ -182,26 +190,56 @@ def display_hepan(paipan, bazi1, bazi2, name1="甲方", name2="乙方"):
         print(f"  五行互补: {', '.join(hepan['wuxing_complement'])}")
 
 
+def build_full_result(paipan, bazi_result, birth_info):
+    """构建完整的 JSON 结果字典"""
+    from lunar_python import Solar
+    solar = Solar.fromYmdHms(birth_info['year'], birth_info['month'], birth_info['day'], birth_info['hour'], 0, 0)
+    lunar = solar.getLunar()
+    qiyun = paipan.compute_qiyun(solar, lunar, birth_info['gender'])
+    dayun = paipan.compute_dayun(bazi_result['bazi'], birth_info['gender'])
+
+    import datetime
+    current_year = datetime.datetime.now().year
+    liunian = paipan.compute_liunian(current_year)
+
+    return {
+        "birth_info": birth_info,
+        "bazi": bazi_result,
+        "dayun": {
+            "qiyun": qiyun,
+            "dayun_list": dayun,
+            "current_liunian": liunian
+        },
+        "shensha": paipan.compute_shensha(bazi_result['bazi']),
+        "minggong": paipan.compute_minggong(bazi_result['bazi']),
+        "taiyuan": paipan.compute_taiyuan(bazi_result['bazi']),
+        "shengong": paipan.compute_shengong(bazi_result['bazi']),
+        "fengshui": paipan.fengshui_reference(bazi_result['bazi'])
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description='《三命通会》智能命理 Agent - 完整演示',
+        description='《三命通会》八字命理分析工具',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  python demo.py --year 1990 --month 5 --day 15 --hour 14 --gender 男
-  python demo.py --year 1990 --month 5 --day 15 --hour 14 --gender 男 --zeri 2025 6 1 结婚
-  python demo.py --year 1990 --month 5 --day 15 --hour 14 --gender 男 --hepan 1992 3 8 10 女
+  python bazi.py --year 1990 --month 5 --day 15 --hour 14 --gender 男
+  python bazi.py --year 1990 --month 5 --day 15 --hour 14 --gender 男 --json
+  python bazi.py --year 1990 --month 5 --day 15 --hour 14 --gender 男 --zeri 2025 6 1 结婚
+  python bazi.py --year 1990 --month 5 --day 15 --hour 14 --gender 男 --hepan 1992 3 8 10 女
         """
     )
     parser.add_argument('--year', type=int, required=True, help='出生年份')
     parser.add_argument('--month', type=int, required=True, help='出生月份')
     parser.add_argument('--day', type=int, required=True, help='出生日期')
-    parser.add_argument('--hour', type=int, required=True, help='出生小时')
-    parser.add_argument('--gender', type=str, default='男', help='性别')
-    parser.add_argument('--lunar', action='store_true', help='农历日期')
+    parser.add_argument('--hour', type=int, required=True, help='出生小时 (0-23)')
+    parser.add_argument('--gender', type=str, default='男', help='性别 (男/女)')
+    parser.add_argument('--lunar', action='store_true', help='输入为农历日期')
+    parser.add_argument('--json', action='store_true', help='输出 JSON 格式')
     parser.add_argument('--zeri', nargs=4, metavar=('Y', 'M', 'D', 'EVENT'), help='择日分析')
     parser.add_argument('--hepan', nargs=5, metavar=('Y', 'M', 'D', 'H', 'GENDER'), help='合盘分析')
-    parser.add_argument('--output', type=str, choices=['text', 'json'], default='text', help='输出格式')
+    parser.add_argument('--no-rag', action='store_true', help='跳过《三命通会》原文检索')
 
     args = parser.parse_args()
 
@@ -211,29 +249,31 @@ def main():
         'is_lunar': args.lunar, 'gender': args.gender
     }
 
-    # 八字排盘
     bazi_result = paipan.paipan(**birth_info)
     if 'error' in bazi_result:
-        print(f"排盘错误: {bazi_result['error']}")
-        return
+        print(f"排盘错误: {bazi_result['error']}", file=sys.stderr)
+        sys.exit(1)
 
-    if args.output == 'json':
-        # JSON输出完整数据
-        full_result = {
-            'bazi': bazi_result,
-            'dayun': paipan.compute_dayun(bazi_result['bazi'], birth_info['gender']),
-            'shensha': paipan.compute_shensha(bazi_result['bazi']),
-            'minggong': paipan.compute_minggong(bazi_result['bazi']),
-            'taiyuan': paipan.compute_taiyuan(bazi_result['bazi']),
-            'shengong': paipan.compute_shengong(bazi_result['bazi']),
-            'fengshui': paipan.fengshui_reference(bazi_result['bazi'])
-        }
+    if args.json:
+        full_result = build_full_result(paipan, bazi_result, birth_info)
         print(json.dumps(full_result, ensure_ascii=False, indent=2))
+
+        if args.zeri:
+            zeri_year, zeri_month, zeri_day, event = args.zeri
+            zeri = paipan.zeri_analysis(int(zeri_year), int(zeri_month), int(zeri_day), event_type=event)
+            print(json.dumps({"zeri": zeri}, ensure_ascii=False, indent=2))
+
+        if args.hepan:
+            hy, hm, hd, hh, hgender = args.hepan
+            bazi2 = paipan.paipan(int(hy), int(hm), int(hd), int(hh), gender=hgender)
+            if 'error' not in bazi2:
+                hepan = paipan.hepan_analysis(bazi_result['bazi'], bazi2['bazi'])
+                print(json.dumps({"hepan": hepan}, ensure_ascii=False, indent=2))
         return
 
     # 文本输出
     print("\n" + "=" * 70)
-    print("《三命通会》智能命理分析系统")
+    print("《三命通会》八字命理分析")
     print("=" * 70)
     print(f"\n出生: {birth_info['year']}年{birth_info['month']}月{birth_info['day']}日{birth_info['hour']}时")
     print(f"性别: {birth_info['gender']}")
@@ -243,14 +283,14 @@ def main():
     display_minggong(paipan, bazi_result)
     display_dayun(paipan, bazi_result, birth_info)
     display_fengshui(paipan, bazi_result)
-    display_rag(bazi_result)
 
-    # 择日分析
+    if not args.no_rag:
+        display_rag(bazi_result)
+
     if args.zeri:
         zeri_year, zeri_month, zeri_day, event = args.zeri
         display_zeri(paipan, int(zeri_year), int(zeri_month), int(zeri_day), event)
 
-    # 合盘分析
     if args.hepan:
         hy, hm, hd, hh, hgender = args.hepan
         bazi2 = paipan.paipan(int(hy), int(hm), int(hd), int(hh), gender=hgender)
@@ -258,7 +298,7 @@ def main():
             display_hepan(paipan, bazi_result['bazi'], bazi2['bazi'])
 
     print("\n" + "=" * 70)
-    print("分析完成！")
+    print("分析完成")
     print("=" * 70)
 
 
