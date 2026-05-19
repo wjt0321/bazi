@@ -81,6 +81,109 @@ def test_shishen_calculation():
 
     return True
 
+def test_dayun():
+    paipan = BaziPaipan()
+    result = paipan.paipan(1990, 5, 15, 14, gender="男")
+    bazi = result['bazi']
+
+    dayun = paipan.compute_dayun(bazi, "男")
+    assert len(dayun) == 10
+    assert dayun[0]['step'] == 1
+    assert 'ganzhi' in dayun[0]
+    assert 'shishen' in dayun[0]
+
+    print("\n大运测试:")
+    print(f"  大运步数: {len(dayun)}")
+    print(f"  第一步: {dayun[0]['ganzhi']} ({dayun[0]['shishen']})")
+
+    return True
+
+
+def test_shensha():
+    paipan = BaziPaipan()
+    result = paipan.paipan(1990, 5, 15, 14, gender="男")
+
+    shensha = paipan.compute_shensha(result['bazi'])
+    assert '吉神' in shensha
+    assert '凶煞' in shensha
+
+    print("\n神煞测试:")
+    print(f"  吉神: {shensha['吉神']}")
+    print(f"  凶煞: {shensha['凶煞']}")
+
+    return True
+
+
+def test_minggong_taiyuan_shengong():
+    paipan = BaziPaipan()
+    result = paipan.paipan(1990, 5, 15, 14, gender="男")
+
+    minggong = paipan.compute_minggong(result['bazi'])
+    taiyuan = paipan.compute_taiyuan(result['bazi'])
+    shengong = paipan.compute_shengong(result['bazi'])
+
+    assert 'ganzhi' in minggong
+    assert 'ganzhi' in taiyuan
+    assert 'ganzhi' in shengong
+
+    print("\n命宫胎元身宫测试:")
+    print(f"  命宫: {minggong['ganzhi']}")
+    print(f"  胎元: {taiyuan['ganzhi']}")
+    print(f"  身宫: {shengong['ganzhi']}")
+
+    return True
+
+
+def test_hepan():
+    paipan = BaziPaipan()
+    bazi1 = paipan.paipan(1990, 5, 15, 14, gender="男")['bazi']
+    bazi2 = paipan.paipan(1992, 3, 8, 10, gender="女")['bazi']
+
+    hepan = paipan.hepan_analysis(bazi1, bazi2)
+    assert 'score' in hepan
+    assert 'level' in hepan
+    assert 'rizhu_relation' in hepan
+
+    print("\n合盘测试:")
+    print(f"  分数: {hepan['score']}/100 ({hepan['level']})")
+    print(f"  日柱关系: {hepan['rizhu_relation']}")
+
+    return True
+
+
+def test_zeri():
+    paipan = BaziPaipan()
+    zeri = paipan.zeri_analysis(2025, 6, 1, event_type="结婚")
+
+    assert 'jianxing' in zeri
+    assert 'score' in zeri
+    assert 'level' in zeri
+
+    print("\n择日测试:")
+    print(f"  日期: {zeri['date']}")
+    print(f"  建星: {zeri['jianxing']}")
+    print(f"  评级: {zeri['level']} ({zeri['score']}分)")
+
+    return True
+
+
+def test_fengshui():
+    paipan = BaziPaipan()
+    result = paipan.paipan(1990, 5, 15, 14, gender="男")
+
+    fs = paipan.fengshui_reference(result['bazi'])
+    assert 'xiyong' in fs
+    assert 'lucky_direction' in fs
+    assert 'lucky_colors' in fs
+
+    print("\n风水测试:")
+    print(f"  喜用神: {fs['xiyong']}")
+    print(f"  吉利方位: {fs['lucky_direction']}")
+    print(f"  适合行业: {fs['suitable_industries'][:3]}")
+
+    return True
+
+
 if __name__ == "__main__":
     print("=" * 50)
     print("八字排盘工具测试")
@@ -99,6 +202,24 @@ if __name__ == "__main__":
     print("\n" + "-" * 50)
 
     test_shishen_calculation()
+    print("\n" + "-" * 50)
+
+    test_dayun()
+    print("\n" + "-" * 50)
+
+    test_shensha()
+    print("\n" + "-" * 50)
+
+    test_minggong_taiyuan_shengong()
+    print("\n" + "-" * 50)
+
+    test_hepan()
+    print("\n" + "-" * 50)
+
+    test_zeri()
+    print("\n" + "-" * 50)
+
+    test_fengshui()
 
     print("\n" + "=" * 50)
     print("所有测试通过!")
