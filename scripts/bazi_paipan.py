@@ -470,19 +470,24 @@ class BaziPaipan:
 
     def compute_liunian(self, year: int) -> dict:
         """
-        计算指定年份的流年
+        计算指定农历年份的流年（或公历年份对应的农历年）
 
         Args:
-            year: 公历年份
+            year: 年份（如果是公历，会自动转换为对应的农历年干支）
 
         Returns:
             流年信息字典
         """
-        solar = Solar.fromYmd(year, 1, 1)
-        lunar = solar.getLunar()
-
-        year_gan = self.gan_list[lunar.getYearGanIndex()]
-        year_zhi = self.zhi_list[lunar.getYearZhiIndex()]
+        # 使用六十甲子表直接计算，避免依赖农历库的1月1日
+        # 公元4年是甲子年
+        base_year = 4
+        offset = (year - base_year) % 60
+        
+        gan_idx = offset % 10
+        zhi_idx = offset % 12
+        
+        year_gan = self.gan_list[gan_idx]
+        year_zhi = self.zhi_list[zhi_idx]
 
         return {
             "year": year,
