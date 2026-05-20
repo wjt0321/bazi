@@ -213,23 +213,15 @@ class BaziPaipan:
 
             lunar = solar.getLunar()
 
-            year_gan_idx = lunar.getYearGanIndex()
-            year_zhi_idx = lunar.getYearZhiIndex()
-            month_gan_idx = lunar.getMonthGanIndex()
-            month_zhi_idx = lunar.getMonthZhiIndex()
-            day_gan_idx = lunar.getDayGanIndex()
-            day_zhi_idx = lunar.getDayZhiIndex()
-            hour_gan_idx = lunar.getTimeGanIndex()
-            hour_zhi_idx = lunar.getTimeZhiIndex()
-
-            year_gan = self.gan_list[year_gan_idx]
-            year_zhi = self.zhi_list[year_zhi_idx]
-            month_gan = self.gan_list[month_gan_idx]
-            month_zhi = self.zhi_list[month_zhi_idx]
-            day_gan = self.gan_list[day_gan_idx]
-            day_zhi = self.zhi_list[day_zhi_idx]
-            hour_gan = self.gan_list[hour_gan_idx]
-            hour_zhi = self.zhi_list[hour_zhi_idx]
+            year_ganzhi = lunar.getYearInGanZhiByLiChun()
+            year_gan = year_ganzhi[0]
+            year_zhi = year_ganzhi[1]
+            month_gan = self.gan_list[lunar.getMonthGanIndex()]
+            month_zhi = self.zhi_list[lunar.getMonthZhiIndex()]
+            day_gan = self.gan_list[lunar.getDayGanIndex()]
+            day_zhi = self.zhi_list[lunar.getDayZhiIndex()]
+            hour_gan = self.gan_list[lunar.getTimeGanIndex()]
+            hour_zhi = self.zhi_list[lunar.getTimeZhiIndex()]
 
             bazi = {
                 "year": {
